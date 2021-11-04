@@ -290,8 +290,8 @@ contract LendingPoolCollateralManager is
 
     AvailableCollateralToLiquidateLocalVars memory vars;
 
-    vars.collateralPrice = oracle.updateAssetPrice(collateralAsset);
-    vars.debtAssetPrice = oracle.updateAssetPrice(debtAsset);
+    vars.collateralPrice = oracle.getAssetPrice(collateralAsset);
+    vars.debtAssetPrice = oracle.getAssetPrice(debtAsset);
 
     (, , vars.liquidationBonus, vars.collateralDecimals, ) = collateralReserve
       .configuration

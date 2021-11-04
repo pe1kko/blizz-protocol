@@ -33,4 +33,6 @@ interface IChainlinkAggregator {
       uint256 updatedAt,
       uint80 answeredInRound
     );
+
+    function latestAnswer() external view returns (uint256);
 }

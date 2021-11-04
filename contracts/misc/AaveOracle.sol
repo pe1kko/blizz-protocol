@@ -5,22 +5,18 @@ import {Ownable} from '../dependencies/openzeppelin/contracts/Ownable.sol';
 import {IERC20} from '../dependencies/openzeppelin/contracts/IERC20.sol';
 
 import {IPriceOracleGetter} from '../interfaces/IPriceOracleGetter.sol';
-import {IPriceFeed} from '../interfaces/IPriceFeed.sol';
+import {IChainlinkAggregator} from '../interfaces/IChainlinkAggregator.sol';
 import {SafeERC20} from '../dependencies/openzeppelin/contracts/SafeERC20.sol';
 
 /// @title AaveOracle
 /// @author Aave
-/// @notice Proxy smart contract to get the price of an asset from a price source, with Chainlink Aggregator
-///         smart contracts as primary option
-/// - If the returned price by a Chainlink aggregator is <= 0, the call is forwarded to a fallbackOracle
-/// - Owned by the Aave governance system, allowed to add sources for assets, replace them
-///   and change the fallbackOracle
+/// @notice Proxy smart contract to get the price of an asset from Chainlink Aggregator smart contracts
 contract AaveOracle is IPriceOracleGetter, Ownable {
   using SafeERC20 for IERC20;
 
   event AssetSourceUpdated(address indexed asset, address indexed source);
 
-  mapping(address => IPriceFeed) private assetsSources;
+  mapping(address => IChainlinkAggregator) private assetsSources;
 
   /// @notice Constructor
   /// @param assets The addresses of the assets
@@ -48,25 +44,16 @@ contract AaveOracle is IPriceOracleGetter, Ownable {
   function _setAssetsSources(address[] memory assets, address[] memory sources) internal {
     require(assets.length == sources.length, 'INCONSISTENT_PARAMS_LENGTH');
     for (uint256 i = 0; i < assets.length; i++) {
-      assetsSources[assets[i]] = IPriceFeed(sources[i]);
+      assetsSources[assets[i]] = IChainlinkAggregator(sources[i]);
       emit AssetSourceUpdated(assets[i], sources[i]);
     }
   }
 
   /// @notice Gets an asset price by address
-  /// @dev All assets are priced relative to USD
-  /// @param asset The asset address
-  function updateAssetPrice(address asset) public override returns (uint256) {
-    IPriceFeed source = assetsSources[asset];
-    return source.updatePrice();
-  }
-
-  /// @notice Gets an asset price by address
-  /// @dev All assets are priced relative to USD
   /// @param asset The asset address
   function getAssetPrice(address asset) public view override returns (uint256) {
-    IPriceFeed source = assetsSources[asset];
-    return source.fetchPrice();
+    IChainlinkAggregator source = assetsSources[asset];
+    return IChainlinkAggregator(source).latestAnswer();
   }
 
   /// @notice Gets a list of prices from a list of assets addresses
