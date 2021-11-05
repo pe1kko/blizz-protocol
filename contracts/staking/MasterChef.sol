@@ -55,7 +55,7 @@ contract MasterChef is Ownable {
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when reward mining starts.
-    uint256 public startTime;
+    uint256 public immutable startTime;
 
     // account earning rewards => receiver of rewards for this account
     // if receiver is set to address(0), rewards are paid to the earner
@@ -85,7 +85,8 @@ contract MasterChef is Ownable {
         uint128[] memory _rewardsPerSecond,
         address _poolConfigurator,
         IMultiFeeDistribution _rewardMinter,
-        uint256 _maxMintable
+        uint256 _maxMintable,
+        uint256 _startTime
     )
         Ownable()
     {
@@ -101,12 +102,7 @@ contract MasterChef is Ownable {
             );
         }
         maxMintableTokens = _maxMintable;
-    }
-
-    // Start the party
-    function start() public onlyOwner {
-        require(startTime == 0);
-        startTime = block.timestamp;
+        startTime = _startTime;
     }
 
     // Add a new lp to the pool. Can only be called by the poolConfigurator.
@@ -184,7 +180,7 @@ contract MasterChef is Ownable {
 
     function _updateEmissions() internal {
         uint256 length = emissionSchedule.length;
-        if (startTime > 0 && length > 0) {
+        if (startTime >= block.timestamp && length > 0) {
             EmissionPoint memory e = emissionSchedule[length-1];
             if (block.timestamp.sub(startTime) > e.startTimeOffset) {
                  _massUpdatePools();
