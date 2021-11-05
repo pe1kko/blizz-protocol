@@ -5,12 +5,12 @@ pragma solidity 0.7.6;
 import "../dependencies/openzeppelin/contracts/SafeMath.sol";
 import "../dependencies/openzeppelin/contracts/IERC20.sol";
 
-contract GeistToken is IERC20 {
+contract BlizzToken is IERC20 {
 
     using SafeMath for uint256;
 
-    string public constant symbol = "GEIST";
-    string public constant name = "Geist.Finance Protocol Token";
+    string public constant symbol = "BLIZZ";
+    string public constant name = "Blizz.Finance Protocol Token";
     uint256 public constant decimals = 18;
     uint256 public override totalSupply;
     uint256 public immutable maxTotalSupply;
