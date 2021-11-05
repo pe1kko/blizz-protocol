@@ -14,5 +14,4 @@ interface IPriceOracleGetter {
    **/
   function getAssetPrice(address asset) external view returns (uint256);
 
-  function updateAssetPrice(address asset) external returns (uint256);
 }

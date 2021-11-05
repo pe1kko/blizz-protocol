@@ -862,7 +862,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     address oracle = _addressesProvider.getPriceOracle();
 
     uint256 amountInETH =
-      IPriceOracleGetter(oracle).updateAssetPrice(vars.asset).mul(vars.amount).div(
+      IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
         10**reserve.configuration.getDecimals()
       );
 
