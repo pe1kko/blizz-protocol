@@ -5,26 +5,30 @@ pragma solidity 0.7.6;
 import "../dependencies/openzeppelin/contracts/SafeMath.sol";
 import "../dependencies/openzeppelin/contracts/IERC20.sol";
 
-contract GeistToken is IERC20 {
+contract BlizzToken is IERC20 {
 
     using SafeMath for uint256;
 
-    string public constant symbol = "GEIST";
-    string public constant name = "Geist.Finance Protocol Token";
+    string public constant symbol = "BLIZZ";
+    string public constant name = "Blizz.Finance Protocol Token";
     uint256 public constant decimals = 18;
     uint256 public override totalSupply;
     uint256 public immutable maxTotalSupply;
     address public minter;
-    address public immutable deployer;
     uint256 public immutable startTime;
+
+    address public treasury;
+    uint256 public immutable maxTreasuryMintable;
+    uint256 public treasuryMintedTokens;
 
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
-    constructor(uint256 _maxTotalSupply, uint256 _startTime) {
+    constructor(uint256 _maxTotalSupply, uint256 _maxTreasuryMintable, uint256 _startTime) {
         maxTotalSupply = _maxTotalSupply;
         startTime = _startTime;
-        deployer = msg.sender;
+        treasury = msg.sender;
+        maxTreasuryMintable = _maxTreasuryMintable;
         emit Transfer(address(0), msg.sender, 0);
     }
 
@@ -43,7 +47,7 @@ contract GeistToken is IERC20 {
     /** shared logic for transfer and transferFrom */
     function _transfer(address _from, address _to, uint256 _value) internal {
         if (block.timestamp < startTime) {
-            require(_from == deployer, "Cannot transfer before startTime");
+            require(_from == treasury, "Cannot transfer before startTime");
         }
         require(balanceOf[_from] >= _value, "Insufficient balance");
         balanceOf[_from] = balanceOf[_from].sub(_value);
@@ -88,12 +92,21 @@ contract GeistToken is IERC20 {
     }
 
     function mint(address _to, uint256 _value) external returns (bool) {
-        require(msg.sender == minter);
+        if (msg.sender != minter) {
+            require(msg.sender == treasury);
+            treasuryMintedTokens = treasuryMintedTokens.add(_value);
+            require(treasuryMintedTokens <= maxTreasuryMintable);
+        }
         balanceOf[_to] = balanceOf[_to].add(_value);
         totalSupply = totalSupply.add(_value);
         require(maxTotalSupply >= totalSupply);
         emit Transfer(address(0), _to, _value);
         return true;
+    }
+
+    function setTreasury(address _treasury) external {
+        require(msg.sender == treasury);
+        treasury = _treasury;
     }
 
 }
