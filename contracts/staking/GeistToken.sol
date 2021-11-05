@@ -15,12 +15,16 @@ contract GeistToken is IERC20 {
     uint256 public override totalSupply;
     uint256 public immutable maxTotalSupply;
     address public minter;
+    address public immutable deployer;
+    uint256 public immutable startTime;
 
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
-    constructor(uint256 _maxTotalSupply) {
+    constructor(uint256 _maxTotalSupply, uint256 _startTime) {
         maxTotalSupply = _maxTotalSupply;
+        startTime = _startTime;
+        deployer = msg.sender;
         emit Transfer(address(0), msg.sender, 0);
     }
 
@@ -38,6 +42,9 @@ contract GeistToken is IERC20 {
 
     /** shared logic for transfer and transferFrom */
     function _transfer(address _from, address _to, uint256 _value) internal {
+        if (block.timestamp < startTime) {
+            require(_from == deployer, "Cannot transfer before startTime");
+        }
         require(balanceOf[_from] >= _value, "Insufficient balance");
         balanceOf[_from] = balanceOf[_from].sub(_value);
         balanceOf[_to] = balanceOf[_to].add(_value);
