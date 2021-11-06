@@ -180,7 +180,7 @@ contract MasterChef is Ownable {
 
     function _updateEmissions() internal {
         uint256 length = emissionSchedule.length;
-        if (startTime >= block.timestamp && length > 0) {
+        if (block.timestamp > startTime && length > 0) {
             EmissionPoint memory e = emissionSchedule[length-1];
             if (block.timestamp.sub(startTime) > e.startTimeOffset) {
                  _massUpdatePools();
