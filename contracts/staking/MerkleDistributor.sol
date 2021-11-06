@@ -16,6 +16,7 @@ contract MerkleDistributor is Ownable {
         uint256 claimed;
     }
 
+    uint256 public immutable initialMintableTokens;
     uint256 public immutable maxMintableTokens;
     uint256 public mintedTokens;
     uint256 public reservedTokens;
@@ -38,16 +39,19 @@ contract MerkleDistributor is Ownable {
     // This is a packed array of booleans.
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMap;
 
-    constructor(IMultiFeeDistribution _rewardMinter, uint256 _maxMintable) Ownable() {
+    constructor(IMultiFeeDistribution _rewardMinter, uint256 _maxMintable, uint256 _initialMintable) Ownable() {
+        require(_initialMintable < _maxMintable);
         rewardMinter = _rewardMinter;
         maxMintableTokens = _maxMintable;
+        initialMintableTokens = _initialMintable;
         startTime = block.timestamp;
     }
 
     function mintableBalance() public view returns (uint256) {
         uint elapsedTime = block.timestamp.sub(startTime);
         if (elapsedTime > duration) elapsedTime = duration;
-        return maxMintableTokens.mul(elapsedTime).div(duration).sub(mintedTokens).sub(reservedTokens);
+        uint mintable = maxMintableTokens.sub(initialMintableTokens).mul(elapsedTime).div(duration);
+        return initialMintableTokens.add(mintable).sub(mintedTokens).sub(reservedTokens);
     }
 
     function addClaimRecord(bytes32 _root, uint256 _duration, uint256 _total) external onlyOwner {

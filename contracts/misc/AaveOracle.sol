@@ -7,12 +7,14 @@ import {IERC20} from '../dependencies/openzeppelin/contracts/IERC20.sol';
 import {IPriceOracleGetter} from '../interfaces/IPriceOracleGetter.sol';
 import {IChainlinkAggregator} from '../interfaces/IChainlinkAggregator.sol';
 import {SafeERC20} from '../dependencies/openzeppelin/contracts/SafeERC20.sol';
+import "../dependencies/openzeppelin/contracts/SafeMath.sol";
 
 /// @title AaveOracle
 /// @author Aave
 /// @notice Proxy smart contract to get the price of an asset from Chainlink Aggregator smart contracts
 contract AaveOracle is IPriceOracleGetter, Ownable {
   using SafeERC20 for IERC20;
+  using SafeMath for uint256;
 
   event AssetSourceUpdated(address indexed asset, address indexed source);
 
@@ -53,7 +55,7 @@ contract AaveOracle is IPriceOracleGetter, Ownable {
   /// @param asset The asset address
   function getAssetPrice(address asset) public view override returns (uint256) {
     IChainlinkAggregator source = assetsSources[asset];
-    return IChainlinkAggregator(source).latestAnswer();
+    return IChainlinkAggregator(source).latestAnswer().mul(1e10);
   }
 
   /// @notice Gets a list of prices from a list of assets addresses
