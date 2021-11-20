@@ -1,4 +1,4 @@
-# geist-protocol
+# blizz-protocol
 
 Decentralized non-custodial liquidity markets protocol. Built with <3 atop the shoulders of giants.
 

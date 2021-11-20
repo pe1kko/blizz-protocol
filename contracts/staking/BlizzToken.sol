@@ -9,7 +9,7 @@ contract BlizzToken is IERC20 {
 
     using SafeMath for uint256;
 
-    string public constant symbol = "BLIZZ";
+    string public constant symbol = "BLZZ";
     string public constant name = "Blizz.Finance Protocol Token";
     uint256 public constant decimals = 18;
     uint256 public override totalSupply;
