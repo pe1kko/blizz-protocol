@@ -13,12 +13,16 @@ contract ATokensAndRatesHelper is Ownable {
   address payable private pool;
   address private addressesProvider;
   address private poolConfigurator;
-  event deployedContracts(address aToken, address strategy);
 
   struct InitDeploymentInput {
-    address asset;
-    uint256[6] rates;
+    uint256 optimalUtilizationRate;
+    uint256 baseVariableBorrowRate;
+    uint256 variableRateSlope1;
+    uint256 variableRateSlope2;
+    uint256 stableRateSlope1;
+    uint256 stableRateSlope2;
   }
+  event deployedContract(address strategy);
 
   struct ConfigureReserveInput {
     address asset;
@@ -42,17 +46,16 @@ contract ATokensAndRatesHelper is Ownable {
 
   function initDeployment(InitDeploymentInput[] calldata inputParams) external onlyOwner {
     for (uint256 i = 0; i < inputParams.length; i++) {
-      emit deployedContracts(
-        address(new AToken()),
+      emit deployedContract(
         address(
           new DefaultReserveInterestRateStrategy(
             LendingPoolAddressesProvider(addressesProvider),
-            inputParams[i].rates[0],
-            inputParams[i].rates[1],
-            inputParams[i].rates[2],
-            inputParams[i].rates[3],
-            inputParams[i].rates[4],
-            inputParams[i].rates[5]
+            inputParams[i].optimalUtilizationRate,
+            inputParams[i].baseVariableBorrowRate,
+            inputParams[i].variableRateSlope1,
+            inputParams[i].variableRateSlope2,
+            inputParams[i].stableRateSlope1,
+            inputParams[i].stableRateSlope2
           )
         )
       );
