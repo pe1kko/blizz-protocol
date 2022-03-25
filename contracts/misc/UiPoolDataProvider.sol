@@ -22,7 +22,6 @@ contract UiPoolDataProvider is IUiPoolDataProvider {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using UserConfiguration for DataTypes.UserConfigurationMap;
 
-  address public constant MOCK_USD_ADDRESS = 0x10F7Fc1F91Ba351f9C629c5947AD69bD03C05b96;
   IAaveIncentivesController public immutable incentivesController;
   IPriceOracleGetter public immutable oracle;
 
