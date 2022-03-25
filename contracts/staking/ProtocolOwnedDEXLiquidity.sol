@@ -32,7 +32,7 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
     using SafeMath for uint256;
 
     IPancakeLPToken constant public lpToken = IPancakeLPToken(0x0000000000000000000000000000000000000000);
-    IERC20 constant public gWBNB = IERC20(0x0000000000000000000000000000000000000000);
+    IERC20 constant public vWBNB = IERC20(0x0000000000000000000000000000000000000000);
     IMultiFeeDistribution constant public treasury = IMultiFeeDistribution(0x0000000000000000000000000000000000000000);
 
     struct UserRecord {
@@ -94,7 +94,7 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
     }
 
     function availableBNB() public view returns (uint256) {
-        return gWBNB.balanceOf(address(this)) / 2;
+        return vWBNB.balanceOf(address(this)) / 2;
     }
 
     function availableForUser(address _user) public view returns (uint256) {
@@ -124,8 +124,8 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
 
         uint lpAmount = _amount.mul(lpTokensPerOneBNB()).div(1e18);
         lpToken.transferFrom(msg.sender, address(this), lpAmount);
-        gWBNB.transfer(msg.sender, _amount);
-        gWBNB.transfer(address(treasury), _amount);
+        vWBNB.transfer(msg.sender, _amount);
+        vWBNB.transfer(address(treasury), _amount);
 
         u.nextClaimTime = block.timestamp.add(_cooldownTime);
         u.claimCount = u.claimCount.add(1);
