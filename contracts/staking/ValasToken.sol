@@ -91,6 +91,14 @@ contract ValasToken is IERC20 {
         return true;
     }
 
+    function burn(uint256 _value) external returns (bool) {
+        require(balanceOf[msg.sender] >= _value, "Insufficient balance");
+        balanceOf[msg.sender] = balanceOf[msg.sender].sub(_value);
+        totalSupply = totalSupply.sub(_value);
+        emit Transfer(msg.sender, address(0), _value);
+        return true;
+    }
+
     function mint(address _to, uint256 _value) external returns (bool) {
         if (msg.sender != minter) {
             require(msg.sender == treasury);
