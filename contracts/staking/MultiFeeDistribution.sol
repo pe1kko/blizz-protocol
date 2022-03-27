@@ -263,12 +263,12 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
                     burnFactor = penaltyFactor.sub(HALF);
                     penaltyFactor = HALF;
                 }
-                amount = amount.add(earnedAmount.mul(WHOLE.sub(penaltyFactor).sub(burnFactor)).div(WHOLE));
+                amount = amount.add(earnedAmount);
                 penaltyAmount = penaltyAmount.add(earnedAmount.mul(penaltyFactor).div(WHOLE));
                 burnAmount = burnAmount.add(earnedAmount.mul(burnFactor).div(WHOLE));
             }
         }
-        amount = bal.unlocked.add(earned);
+        amount = bal.unlocked.add(earned).sub(penaltyAmount).sub(burnAmount);
         return (amount, penaltyAmount, burnAmount);
     }
 
