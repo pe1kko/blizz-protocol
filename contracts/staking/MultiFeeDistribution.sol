@@ -90,7 +90,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         stakingToken = IStakingToken(_stakingToken);
         IStakingToken(_stakingToken).setMinter(address(this));
         // First reward MUST be the staking token or things will break
-        // related to the 50% penalty and distribution to locked balances
+        // related to the penalty and distribution to locked balances
         rewardTokens.push(_stakingToken);
         rewardData[_stakingToken].lastUpdateTime = block.timestamp;
     }
@@ -189,7 +189,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     }
 
     // Information on the "earned" balances of a user
-    // Earned balances may be withdrawn immediately for a 50% penalty
+    // Earned balances may be withdrawn immediately for a penalty
     function earnedBalances(
         address user
     ) view external returns (
@@ -300,7 +300,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     }
 
     // Mint new tokens
-    // Minted tokens receive rewards normally but incur a 50% penalty when
+    // Minted tokens receive rewards normally but incur a penalty when
     // withdrawn before lockDuration has passed.
     function mint(address user, uint256 amount, bool withPenalty) external override {
         require(minters[msg.sender]);
@@ -333,7 +333,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     // Withdraw staked tokens
     // First withdraws unlocked tokens, then earned tokens. Withdrawing earned tokens
-    // incurs a 50% penalty which is distributed based on locked balances.
+    // incurs a penalty which is distributed based on locked balances.
     function withdraw(uint256 amount) public {
         require(amount > 0, "Cannot withdraw 0");
         _updateReward(msg.sender);
