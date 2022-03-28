@@ -78,6 +78,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     uint256 public totalSupply;
     uint256 public lockedSupply;
+    uint256 public burnedSupply;
 
     // Private mappings for balance data
     mapping(address => Balances) private balances;
@@ -399,6 +400,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         }
         if (burnAmount > 0) {
             stakingToken.burn(burnAmount);
+            burnedSupply = burnedSupply.add(burnAmount);
         }
         emit Withdrawn(msg.sender, amount, penaltyAmount, burnAmount);
     }
@@ -455,6 +457,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         }
         if (burnAmount > 0) {
             stakingToken.burn(burnAmount);
+            burnedSupply = burnedSupply.add(burnAmount);
         }
         if (claimRewards) {
             _getReward(rewardTokens);
