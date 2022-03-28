@@ -10,7 +10,7 @@ contract ValasToken is IERC20 {
     using SafeMath for uint256;
 
     string public constant symbol = "VALAS";
-    string public constant name = "Valas.Finance Protocol Token";
+    string public constant name = "Valas Finance Protocol Token";
     uint8 public constant decimals = 18;
     uint256 public override totalSupply;
     uint256 public immutable maxTotalSupply;
