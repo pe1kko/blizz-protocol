@@ -447,7 +447,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         bal.unlocked = 0;
         bal.earned = 0;
 
-        totalSupply = totalSupply.sub(amount.add(penaltyAmount));
+        totalSupply = totalSupply.sub(amount.add(penaltyAmount).add(burnAmount));
         stakingToken.safeTransfer(msg.sender, amount);
         if (penaltyAmount > 0) {
             incentivesController.claim(address(this), new address[](0));
