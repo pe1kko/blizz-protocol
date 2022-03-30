@@ -31,9 +31,9 @@ interface IMultiFeeDistribution {
 contract ProtocolOwnedDEXLiquidity is Ownable {
     using SafeMath for uint256;
 
-    IPancakeLPToken constant public lpToken = IPancakeLPToken(0x0000000000000000000000000000000000000000);
-    IERC20 constant public vWBNB = IERC20(0x0000000000000000000000000000000000000000);
-    IMultiFeeDistribution constant public treasury = IMultiFeeDistribution(0x0000000000000000000000000000000000000000);
+    IPancakeLPToken constant public lpToken = IPancakeLPToken(0x829F540957DFC652c4466a7F34de611E172e64E8);
+    IERC20 constant public vWBNB = IERC20(0xB11A912CD93DcffA8b609b4C021E89723ceb7FE8);
+    IMultiFeeDistribution constant public treasury = IMultiFeeDistribution(0x685D3b02b9b0F044A3C01Dbb95408FC2eB15a3b3);
 
     struct UserRecord {
         uint256 nextClaimTime;
@@ -66,7 +66,7 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         uint256 _cooldown,
         uint256 _podlCooldown
     ) Ownable() {
-        IChefIncentivesController chef = IChefIncentivesController(0x0000000000000000000000000000000000000000);
+        IChefIncentivesController chef = IChefIncentivesController(0xB7c1d99069a4eb582Fc04E7e1124794000e7ecBF);
         chef.setClaimReceiver(address(this), address(treasury));
         setParams(_lockMultiplier, _minBuy, _minLock, _cooldown, _podlCooldown);
     }
@@ -90,7 +90,7 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         (uint reserve0, uint reserve1,) = lpToken.getReserves();
         uint balance = lpToken.balanceOf(address(this));
         uint totalSupply = lpToken.totalSupply();
-        return (reserve0.mul(balance).div(totalSupply), reserve1.mul(balance).div(totalSupply));
+        return (reserve1.mul(balance).div(totalSupply), reserve0.mul(balance).div(totalSupply));
     }
 
     function availableBNB() public view returns (uint256) {
@@ -112,8 +112,8 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
 
     function lpTokensPerOneBNB() public view returns (uint256) {
         uint totalSupply = lpToken.totalSupply();
-        (uint reserve0,,) = lpToken.getReserves();
-        return totalSupply.mul(1e18).mul(45).div(reserve0).div(100);
+        (,uint reserve1,) = lpToken.getReserves();
+        return totalSupply.mul(1e18).mul(45).div(reserve1).div(100);
     }
 
     function _buy(uint _amount, uint _cooldownTime) internal {
