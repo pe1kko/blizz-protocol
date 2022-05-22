@@ -24,6 +24,8 @@ contract ValasToken is IERC20 {
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
 
+    event TreasurySet(address treasury);
+
     constructor(uint256 _maxTotalSupply, uint256 _maxTreasuryMintable, uint256 _startTime) {
         maxTotalSupply = _maxTotalSupply;
         startTime = _startTime;
@@ -115,6 +117,7 @@ contract ValasToken is IERC20 {
     function setTreasury(address _treasury) external {
         require(msg.sender == treasury);
         treasury = _treasury;
+        emit TreasurySet(_treasury);
     }
 
 }

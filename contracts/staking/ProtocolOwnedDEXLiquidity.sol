@@ -46,6 +46,13 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
     uint public superPODLCooldown;
     uint public lockedBalanceMultiplier;
 
+    event ParamsSet(
+        uint256 lockMultiplier,
+        uint256 minBuy,
+        uint256 minLock,
+        uint256 cooldown,
+        uint256 podlCooldown
+    );
     event SoldBNB(
         address indexed buyer,
         uint256 amount
@@ -80,6 +87,7 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         minSuperPODLLock = _minLock;
         buyCooldown = _cooldown;
         superPODLCooldown = _podlCooldown;
+        emit ParamsSet(_lockMultiplier, _minBuy, _minLock, _cooldown, _podlCooldown);
     }
 
     function protocolOwnedReserves() public view returns (uint256 wbnb, uint256 valas) {

@@ -108,6 +108,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     function setIncentivesController(IChefIncentivesController _controller) external onlyOwner {
         incentivesController = _controller;
+        emit IncentiveControllerSet(address(_controller));
     }
 
     // Add a new reward token to be distributed to stakers
@@ -116,6 +117,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         rewardTokens.push(_rewardsToken);
         rewardData[_rewardsToken].lastUpdateTime = block.timestamp;
         rewardData[_rewardsToken].periodFinish = block.timestamp;
+        emit RewardTokenAdded(_rewardsToken);
     }
 
     /* ========== VIEWS ========== */
@@ -546,6 +548,8 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     /* ========== EVENTS ========== */
 
+    event IncentiveControllerSet(address controller);
+    event RewardTokenAdded(address token);
     event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount, bool locked);
     event Withdrawn(address indexed user, uint256 receivedAmount, uint256 penaltyPaid, uint256 burned);

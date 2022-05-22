@@ -20,6 +20,8 @@ contract TokenVesting {
 
     mapping(address => Vest) public vests;
 
+    event Started();
+
     constructor(
         IMultiFeeDistribution _minter,
         uint256 _maxMintable,
@@ -43,6 +45,7 @@ contract TokenVesting {
         require(msg.sender == owner);
         require(startTime == 0);
         startTime = block.timestamp;
+        emit Started();
     }
 
     function claimable(address _claimer) external view returns (uint256) {
