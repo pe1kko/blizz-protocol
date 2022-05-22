@@ -10,7 +10,7 @@ contract TokenVesting {
     uint256 public constant duration = 86400 * 365;
     uint256 public immutable maxMintableTokens;
     uint256 public mintedTokens;
-    IMultiFeeDistribution public minter;
+    IMultiFeeDistribution public immutable minter;
     address public owner;
 
     struct Vest {

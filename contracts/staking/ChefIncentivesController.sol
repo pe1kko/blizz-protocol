@@ -34,9 +34,9 @@ contract ChefIncentivesController is Ownable {
         uint128 rewardsPerSecond;
     }
 
-    address public poolConfigurator;
+    address public immutable poolConfigurator;
 
-    IMultiFeeDistribution public rewardMinter;
+    IMultiFeeDistribution public immutable rewardMinter;
     uint256 public rewardsPerSecond;
     uint256 public immutable maxMintableTokens;
     uint256 public mintedTokens;

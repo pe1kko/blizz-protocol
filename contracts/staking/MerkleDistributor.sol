@@ -24,7 +24,7 @@ contract MerkleDistributor is Ownable {
     uint256 public constant duration = 86400 * 365;
     uint256 public constant minDuration = 86400 * 7;
 
-    IMultiFeeDistribution public rewardMinter;
+    IMultiFeeDistribution public immutable rewardMinter;
 
     ClaimRecord[] public claims;
 
