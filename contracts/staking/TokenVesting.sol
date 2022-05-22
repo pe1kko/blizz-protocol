@@ -66,9 +66,9 @@ contract TokenVesting {
         if (claimable > v.claimed) {
             uint256 amount = claimable.sub(v.claimed);
             mintedTokens = mintedTokens.add(amount);
+            v.claimed = claimable;
             require(mintedTokens <= maxMintableTokens);
             minter.mint(_receiver, amount, false);
-            v.claimed = claimable;
         }
     }
 }

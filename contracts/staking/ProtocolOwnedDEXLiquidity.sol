@@ -126,15 +126,15 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         require(_amount >= minBuyAmount, "Below min buy amount");
         require(block.timestamp >= u.nextClaimTime, "Claimed too recently");
 
-        uint lpAmount = _amount.mul(lpTokensPerOneBNB()).div(1e18);
-        lpToken.safeTransferFrom(msg.sender, address(this), lpAmount);
-        vWBNB.safeTransfer(msg.sender, _amount);
-        vWBNB.safeTransfer(address(treasury), _amount);
-
         u.nextClaimTime = block.timestamp.add(_cooldownTime);
         u.claimCount = u.claimCount.add(1);
         u.totalBoughtBNB = u.totalBoughtBNB.add(_amount);
         totalSoldBNB = totalSoldBNB.add(_amount);
+
+        uint lpAmount = _amount.mul(lpTokensPerOneBNB()).div(1e18);
+        lpToken.safeTransferFrom(msg.sender, address(this), lpAmount);
+        vWBNB.safeTransfer(msg.sender, _amount);
+        vWBNB.safeTransfer(address(treasury), _amount);
 
         emit SoldBNB(msg.sender, _amount);
     }
