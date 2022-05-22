@@ -1,11 +1,12 @@
 pragma solidity 0.7.6;
 
 import "../dependencies/openzeppelin/contracts/SafeMath.sol";
+import "../dependencies/openzeppelin/contracts/SafeERC20.sol";
 import "../dependencies/openzeppelin/contracts/IERC20.sol";
 import "../dependencies/openzeppelin/contracts/Ownable.sol";
 import "../interfaces/IChefIncentivesController.sol";
 
-interface IPancakeLPToken {
+interface IPancakeLPToken is IERC20 {
     function getReserves()
         external
         view
@@ -14,13 +15,6 @@ interface IPancakeLPToken {
             uint112 reserve1,
             uint32 blockTimestampLast
         );
-    function totalSupply() external view returns (uint256);
-    function balanceOf(address account) external view returns (uint256);
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external returns (bool);
 }
 
 interface IMultiFeeDistribution {
@@ -30,6 +24,8 @@ interface IMultiFeeDistribution {
 
 contract ProtocolOwnedDEXLiquidity is Ownable {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
+    using SafeERC20 for IPancakeLPToken;
 
     IPancakeLPToken constant public lpToken = IPancakeLPToken(0x829F540957DFC652c4466a7F34de611E172e64E8);
     IERC20 constant public vWBNB = IERC20(0xB11A912CD93DcffA8b609b4C021E89723ceb7FE8);
@@ -123,9 +119,9 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         require(block.timestamp >= u.nextClaimTime, "Claimed too recently");
 
         uint lpAmount = _amount.mul(lpTokensPerOneBNB()).div(1e18);
-        lpToken.transferFrom(msg.sender, address(this), lpAmount);
-        vWBNB.transfer(msg.sender, _amount);
-        vWBNB.transfer(address(treasury), _amount);
+        lpToken.safeTransferFrom(msg.sender, address(this), lpAmount);
+        vWBNB.safeTransfer(msg.sender, _amount);
+        vWBNB.safeTransfer(address(treasury), _amount);
 
         u.nextClaimTime = block.timestamp.add(_cooldownTime);
         u.claimCount = u.claimCount.add(1);
