@@ -92,7 +92,7 @@ contract ChefIncentivesController is Ownable {
             );
         }
         maxMintableTokens = _maxMintable;
-        startTime = _startTime;
+        startTime = _startTime > block.timestamp ? _startTime : block.timestamp;
     }
 
     // Add a new lp to the pool. Can only be called by the poolConfigurator.
