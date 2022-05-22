@@ -554,6 +554,5 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     event Staked(address indexed user, uint256 amount, bool locked);
     event Withdrawn(address indexed user, uint256 receivedAmount, uint256 penaltyPaid, uint256 burned);
     event RewardPaid(address indexed user, address indexed rewardsToken, uint256 reward);
-    event RewardsDurationUpdated(address token, uint256 newDuration);
     event Recovered(address token, uint256 amount);
 }
