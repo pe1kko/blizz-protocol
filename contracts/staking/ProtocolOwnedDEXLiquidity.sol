@@ -5,6 +5,7 @@ import "../dependencies/openzeppelin/contracts/SafeERC20.sol";
 import "../dependencies/openzeppelin/contracts/IERC20.sol";
 import "../dependencies/openzeppelin/contracts/Ownable.sol";
 import "../interfaces/IChefIncentivesController.sol";
+import "../misc/Math.sol";
 
 interface IPancakeLPToken is IERC20 {
     function getReserves()
@@ -15,6 +16,7 @@ interface IPancakeLPToken is IERC20 {
             uint112 reserve1,
             uint32 blockTimestampLast
         );
+    function price0CumulativeLast() external view returns (uint256);
 }
 
 interface IMultiFeeDistribution {
@@ -46,6 +48,10 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
     uint public superPODLCooldown;
     uint public lockedBalanceMultiplier;
 
+    uint private lpPerBNB;
+    uint public cumulativePrice;
+    uint public cumulativePriceUpdated;
+
     event ParamsSet(
         uint256 lockMultiplier,
         uint256 minBuy,
@@ -72,6 +78,12 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         IChefIncentivesController chef = IChefIncentivesController(0xB7c1d99069a4eb582Fc04E7e1124794000e7ecBF);
         chef.setClaimReceiver(address(this), address(treasury));
         setParams(_lockMultiplier, _minBuy, _minLock, _cooldown, _podlCooldown);
+
+        uint totalSupply = lpToken.totalSupply();
+        (,uint reserve1,uint updated) = lpToken.getReserves();
+        lpPerBNB = totalSupply.mul(1e18).mul(45).div(reserve1).div(100);
+        cumulativePriceUpdated = updated;
+        cumulativePrice = lpToken.price0CumulativeLast();
     }
 
     function setParams(
@@ -114,10 +126,16 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         return amount;
     }
 
-    function lpTokensPerOneBNB() public view returns (uint256) {
-        uint totalSupply = lpToken.totalSupply();
-        (,uint reserve1,) = lpToken.getReserves();
-        return totalSupply.mul(1e18).mul(45).div(reserve1).div(100);
+    function lpTokensPerOneBNB() public view returns (uint256 lpPerBNB_, uint256 cumulative_, uint256 updated_) {
+        (uint reserve0, uint reserve1, uint updated) = lpToken.getReserves();
+        uint newCumulative = lpToken.price0CumulativeLast();
+        if (cumulativePriceUpdated == updated) {
+            return (lpPerBNB, cumulativePrice, updated);
+        }
+        uint price = (newCumulative - cumulativePrice) / updated.sub(cumulativePriceUpdated);
+        uint bnbReserve = Math.sqrt(reserve0.mul(price).div(2**112).mul(reserve1));
+        uint newLpPerBNB = lpToken.totalSupply().mul(1e18).mul(45).div(bnbReserve).div(100);
+        return (newLpPerBNB, newCumulative, updated);
     }
 
     function _buy(uint _amount, uint _cooldownTime) internal {
@@ -131,7 +149,14 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
         u.totalBoughtBNB = u.totalBoughtBNB.add(_amount);
         totalSoldBNB = totalSoldBNB.add(_amount);
 
-        uint lpAmount = _amount.mul(lpTokensPerOneBNB()).div(1e18);
+        (uint lpPerBNB_, uint cumulative_, uint updated_) = lpTokensPerOneBNB();
+        if (cumulativePriceUpdated != updated_) {
+            lpPerBNB = lpPerBNB_;
+            cumulativePrice = cumulative_;
+            cumulativePriceUpdated = updated_;
+        }
+
+        uint lpAmount = _amount.mul(lpPerBNB_).div(1e18);
         lpToken.safeTransferFrom(msg.sender, address(this), lpAmount);
         vWBNB.safeTransfer(msg.sender, _amount);
         vWBNB.safeTransfer(address(treasury), _amount);
