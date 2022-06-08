@@ -129,8 +129,8 @@ contract ProtocolOwnedDEXLiquidity is Ownable {
     function lpTokensPerOneBNB() public view returns (uint256 lpPerBNB_, uint256 cumulative_, uint256 updated_) {
         (uint reserve0, uint reserve1, uint updated) = lpToken.getReserves();
         uint newCumulative = lpToken.price0CumulativeLast();
-        if (cumulativePriceUpdated == updated) {
-            return (lpPerBNB, cumulativePrice, updated);
+        if (updated.sub(cumulativePriceUpdated) <= 3600) {
+            return (lpPerBNB, cumulativePrice, cumulativePriceUpdated);
         }
         uint price = (newCumulative - cumulativePrice) / updated.sub(cumulativePriceUpdated);
         uint bnbReserve = Math.sqrt(reserve0.mul(price).div(2**112).mul(reserve1));
