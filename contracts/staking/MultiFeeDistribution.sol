@@ -9,9 +9,14 @@ import "../dependencies/openzeppelin/contracts/SafeMath.sol";
 import "../dependencies/openzeppelin/contracts/Ownable.sol";
 
 
-interface IMintableToken is IERC20 {
+interface IStakingToken is IERC20 {
     function mint(address _receiver, uint256 _amount) external returns (bool);
     function setMinter(address _minter) external returns (bool);
+    function burn(uint256 _value) external returns (bool);
+}
+
+interface IBurnableToken is IERC20 {
+    function burn(uint256 amount) external;
 }
 
 // Based on Ellipsis EPS Staker
@@ -20,7 +25,11 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IMintableToken;
+    using SafeERC20 for IStakingToken;
+
+    uint256 private constant QUART =  25000; //  25%
+    uint256 private constant HALF  =  50000; //  50%
+    uint256 private constant WHOLE = 100000; // 100%
 
     /* ========== STATE VARIABLES ========== */
 
@@ -49,7 +58,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     }
 
     IChefIncentivesController public incentivesController;
-    IMintableToken public immutable stakingToken;
+    IStakingToken public immutable stakingToken;
     address[] public rewardTokens;
     mapping(address => Reward) public rewardData;
 
@@ -69,6 +78,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     uint256 public totalSupply;
     uint256 public lockedSupply;
+    uint256 public burnedSupply;
 
     // Private mappings for balance data
     mapping(address => Balances) private balances;
@@ -78,10 +88,10 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(address _stakingToken) Ownable() {
-        stakingToken = IMintableToken(_stakingToken);
-        IMintableToken(_stakingToken).setMinter(address(this));
+        stakingToken = IStakingToken(_stakingToken);
+        IStakingToken(_stakingToken).setMinter(address(this));
         // First reward MUST be the staking token or things will break
-        // related to the 50% penalty and distribution to locked balances
+        // related to the penalty and distribution to locked balances
         rewardTokens.push(_stakingToken);
         rewardData[_stakingToken].lastUpdateTime = block.timestamp;
     }
@@ -98,6 +108,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     function setIncentivesController(IChefIncentivesController _controller) external onlyOwner {
         incentivesController = _controller;
+        emit IncentiveControllerSet(address(_controller));
     }
 
     // Add a new reward token to be distributed to stakers
@@ -106,6 +117,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         rewardTokens.push(_rewardsToken);
         rewardData[_rewardsToken].lastUpdateTime = block.timestamp;
         rewardData[_rewardsToken].periodFinish = block.timestamp;
+        emit RewardTokenAdded(_rewardsToken);
     }
 
     /* ========== VIEWS ========== */
@@ -180,7 +192,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     }
 
     // Information on the "earned" balances of a user
-    // Earned balances may be withdrawn immediately for a 50% penalty
+    // Earned balances may be withdrawn immediately for a penalty
     function earnedBalances(
         address user
     ) view external returns (
@@ -233,26 +245,34 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         address user
     ) view public returns (
         uint256 amount,
-        uint256 penaltyAmount
+        uint256 penaltyAmount,
+        uint256 burnAmount
     ) {
         Balances storage bal = balances[user];
         uint256 earned = bal.earned;
         if (earned > 0) {
-            uint256 amountWithoutPenalty;
             uint256 length = userEarnings[user].length;
             for (uint i = 0; i < length; i++) {
                 uint256 earnedAmount = userEarnings[user][i].amount;
                 if (earnedAmount == 0) continue;
-                if (userEarnings[user][i].unlockTime > block.timestamp) {
-                    break;
-                }
-                amountWithoutPenalty = amountWithoutPenalty.add(earnedAmount);
-            }
+                uint256 unlockTime = userEarnings[user][i].unlockTime;
 
-            penaltyAmount = earned.sub(amountWithoutPenalty).div(2);
+                uint256 penaltyFactor;
+                if (unlockTime > block.timestamp) {
+                    penaltyFactor = unlockTime.sub(block.timestamp).mul(HALF).div(lockDuration).add(QUART); // 25% + timeLeft/lockDuration * 50%
+                }
+                uint256 burnFactor;
+                if (penaltyFactor > HALF) {
+                    burnFactor = penaltyFactor.sub(HALF);
+                    penaltyFactor = HALF;
+                }
+                amount = amount.add(earnedAmount);
+                penaltyAmount = penaltyAmount.add(earnedAmount.mul(penaltyFactor).div(WHOLE));
+                burnAmount = burnAmount.add(earnedAmount.mul(burnFactor).div(WHOLE));
+            }
         }
-        amount = bal.unlocked.add(earned).sub(penaltyAmount);
-        return (amount, penaltyAmount);
+        amount = bal.unlocked.add(earned).sub(penaltyAmount).sub(burnAmount);
+        return (amount, penaltyAmount, burnAmount);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -283,7 +303,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     }
 
     // Mint new tokens
-    // Minted tokens receive rewards normally but incur a 50% penalty when
+    // Minted tokens receive rewards normally but incur a penalty when
     // withdrawn before lockDuration has passed.
     function mint(address user, uint256 amount, bool withPenalty) external override {
         require(minters[msg.sender]);
@@ -316,12 +336,13 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     // Withdraw staked tokens
     // First withdraws unlocked tokens, then earned tokens. Withdrawing earned tokens
-    // incurs a 50% penalty which is distributed based on locked balances.
+    // incurs a penalty which is distributed based on locked balances.
     function withdraw(uint256 amount) public {
         require(amount > 0, "Cannot withdraw 0");
         _updateReward(msg.sender);
         Balances storage bal = balances[msg.sender];
         uint256 penaltyAmount;
+        uint256 burnAmount;
 
         if (amount <= bal.unlocked) {
             bal.unlocked = bal.unlocked.sub(amount);
@@ -329,31 +350,49 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
             uint256 remaining = amount.sub(bal.unlocked);
             require(bal.earned >= remaining, "Insufficient unlocked balance");
             bal.unlocked = 0;
-            bal.earned = bal.earned.sub(remaining);
+            uint256 sumEarned = bal.earned;
             for (uint i = 0; ; i++) {
                 uint256 earnedAmount = userEarnings[msg.sender][i].amount;
                 if (earnedAmount == 0) continue;
-                if (penaltyAmount == 0 && userEarnings[msg.sender][i].unlockTime > block.timestamp) {
-                    penaltyAmount = remaining;
-                    require(bal.earned >= remaining, "Insufficient balance after penalty");
-                    bal.earned = bal.earned.sub(remaining);
-                    if (bal.earned == 0) {
-                        delete userEarnings[msg.sender];
-                        break;
-                    }
-                    remaining = remaining.mul(2);
+                uint256 unlockTime = userEarnings[msg.sender][i].unlockTime;
+                
+                uint256 penaltyFactor;
+                if (unlockTime > block.timestamp) {
+                    penaltyFactor = unlockTime.sub(block.timestamp).mul(HALF).div(lockDuration).add(QUART); // 25% + timeLeft/lockDuration * 50%
                 }
-                if (remaining <= earnedAmount) {
-                    userEarnings[msg.sender][i].amount = earnedAmount.sub(remaining);
-                    break;
-                } else {
+                
+                // Amount required from this lock, taking into account the penalty
+                uint256 requiredAmount = remaining.mul(WHOLE).div(WHOLE.sub(penaltyFactor));
+                if (requiredAmount >= earnedAmount) {
+                    requiredAmount = earnedAmount;
                     delete userEarnings[msg.sender][i];
-                    remaining = remaining.sub(earnedAmount);
+                    remaining = remaining.sub(earnedAmount.mul(WHOLE.sub(penaltyFactor)).div(WHOLE)); // remaining -= earned * (1 - pentaltyFactor)
+                }
+                else {
+                    userEarnings[msg.sender][i].amount = earnedAmount.sub(requiredAmount);
+                    remaining = 0;
+                }
+                sumEarned = sumEarned.sub(requiredAmount);
+
+                uint256 burnFactor;
+                if (penaltyFactor > HALF) {
+                    burnFactor = penaltyFactor.sub(HALF);
+                    penaltyFactor = HALF;
+                }
+                penaltyAmount = penaltyAmount.add(requiredAmount.mul(penaltyFactor).div(WHOLE)); // penalty += amount * penaltyFactor
+                burnAmount = burnAmount.add(requiredAmount.mul(burnFactor).div(WHOLE)); // burn += amount * burnFactor
+
+                if (remaining == 0) {
+                    break;
+                }
+                else {
+                    require(sumEarned > 0, "Insufficient balance");
                 }
             }
+            bal.earned = sumEarned;
         }
 
-        uint256 adjustedAmount = amount.add(penaltyAmount);
+        uint256 adjustedAmount = amount.add(penaltyAmount).add(burnAmount);
         bal.total = bal.total.sub(adjustedAmount);
         totalSupply = totalSupply.sub(adjustedAmount);
         stakingToken.safeTransfer(msg.sender, amount);
@@ -361,7 +400,11 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
             incentivesController.claim(address(this), new address[](0));
             _notifyReward(address(stakingToken), penaltyAmount);
         }
-        emit Withdrawn(msg.sender, amount, penaltyAmount);
+        if (burnAmount > 0) {
+            stakingToken.burn(burnAmount);
+            burnedSupply = burnedSupply.add(burnAmount);
+        }
+        emit Withdrawn(msg.sender, amount, penaltyAmount, burnAmount);
     }
 
     function _getReward(address[] memory _rewardTokens) internal {
@@ -401,23 +444,27 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
     // Withdraw full unlocked balance and optionally claim pending rewards
     function exit(bool claimRewards) external {
         _updateReward(msg.sender);
-        (uint256 amount, uint256 penaltyAmount) = withdrawableBalance(msg.sender);
+        (uint256 amount, uint256 penaltyAmount, uint256 burnAmount) = withdrawableBalance(msg.sender);
         delete userEarnings[msg.sender];
         Balances storage bal = balances[msg.sender];
         bal.total = bal.total.sub(bal.unlocked).sub(bal.earned);
         bal.unlocked = 0;
         bal.earned = 0;
 
-        totalSupply = totalSupply.sub(amount.add(penaltyAmount));
+        totalSupply = totalSupply.sub(amount.add(penaltyAmount).add(burnAmount));
         stakingToken.safeTransfer(msg.sender, amount);
         if (penaltyAmount > 0) {
             incentivesController.claim(address(this), new address[](0));
             _notifyReward(address(stakingToken), penaltyAmount);
         }
+        if (burnAmount > 0) {
+            stakingToken.burn(burnAmount);
+            burnedSupply = burnedSupply.add(burnAmount);
+        }
         if (claimRewards) {
             _getReward(rewardTokens);
         }
-        emit Withdrawn(msg.sender, amount, penaltyAmount);
+        emit Withdrawn(msg.sender, amount, penaltyAmount, burnAmount);
     }
 
     // Withdraw all currently locked tokens where the unlock time has passed
@@ -442,7 +489,7 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
         totalSupply = totalSupply.sub(amount);
         lockedSupply = lockedSupply.sub(amount);
         stakingToken.safeTransfer(msg.sender, amount);
-        emit Withdrawn(msg.sender, amount, 0);
+        emit Withdrawn(msg.sender, amount, 0, 0);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -501,10 +548,11 @@ contract MultiFeeDistribution is IMultiFeeDistribution, Ownable {
 
     /* ========== EVENTS ========== */
 
+    event IncentiveControllerSet(address controller);
+    event RewardTokenAdded(address token);
     event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount, bool locked);
-    event Withdrawn(address indexed user, uint256 receivedAmount, uint256 penaltyPaid);
+    event Withdrawn(address indexed user, uint256 receivedAmount, uint256 penaltyPaid, uint256 burned);
     event RewardPaid(address indexed user, address indexed rewardsToken, uint256 reward);
-    event RewardsDurationUpdated(address token, uint256 newDuration);
     event Recovered(address token, uint256 amount);
 }

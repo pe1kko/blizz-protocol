@@ -5,13 +5,13 @@ pragma solidity 0.7.6;
 import "../dependencies/openzeppelin/contracts/SafeMath.sol";
 import "../dependencies/openzeppelin/contracts/IERC20.sol";
 
-contract BlizzToken is IERC20 {
+contract ValasToken is IERC20 {
 
     using SafeMath for uint256;
 
-    string public constant symbol = "BLZZ";
-    string public constant name = "Blizz.Finance Protocol Token";
-    uint256 public constant decimals = 18;
+    string public constant symbol = "VALAS";
+    string public constant name = "Valas Finance Protocol Token";
+    uint8 public constant decimals = 18;
     uint256 public override totalSupply;
     uint256 public immutable maxTotalSupply;
     address public minter;
@@ -23,6 +23,8 @@ contract BlizzToken is IERC20 {
 
     mapping(address => uint256) public override balanceOf;
     mapping(address => mapping(address => uint256)) public override allowance;
+
+    event TreasurySet(address treasury);
 
     constructor(uint256 _maxTotalSupply, uint256 _maxTreasuryMintable, uint256 _startTime) {
         maxTotalSupply = _maxTotalSupply;
@@ -91,6 +93,14 @@ contract BlizzToken is IERC20 {
         return true;
     }
 
+    function burn(uint256 _value) external returns (bool) {
+        require(balanceOf[msg.sender] >= _value, "Insufficient balance");
+        balanceOf[msg.sender] = balanceOf[msg.sender].sub(_value);
+        totalSupply = totalSupply.sub(_value);
+        emit Transfer(msg.sender, address(0), _value);
+        return true;
+    }
+
     function mint(address _to, uint256 _value) external returns (bool) {
         if (msg.sender != minter) {
             require(msg.sender == treasury);
@@ -107,6 +117,7 @@ contract BlizzToken is IERC20 {
     function setTreasury(address _treasury) external {
         require(msg.sender == treasury);
         treasury = _treasury;
+        emit TreasurySet(_treasury);
     }
 
 }

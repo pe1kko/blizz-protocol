@@ -10,7 +10,7 @@ contract TokenVesting {
     uint256 public constant duration = 86400 * 365;
     uint256 public immutable maxMintableTokens;
     uint256 public mintedTokens;
-    IMultiFeeDistribution public minter;
+    IMultiFeeDistribution public immutable minter;
     address public owner;
 
     struct Vest {
@@ -19,6 +19,8 @@ contract TokenVesting {
     }
 
     mapping(address => Vest) public vests;
+
+    event Started();
 
     constructor(
         IMultiFeeDistribution _minter,
@@ -43,6 +45,7 @@ contract TokenVesting {
         require(msg.sender == owner);
         require(startTime == 0);
         startTime = block.timestamp;
+        emit Started();
     }
 
     function claimable(address _claimer) external view returns (uint256) {
@@ -63,9 +66,9 @@ contract TokenVesting {
         if (claimable > v.claimed) {
             uint256 amount = claimable.sub(v.claimed);
             mintedTokens = mintedTokens.add(amount);
+            v.claimed = claimable;
             require(mintedTokens <= maxMintableTokens);
             minter.mint(_receiver, amount, false);
-            v.claimed = claimable;
         }
     }
 }

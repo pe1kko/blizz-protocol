@@ -33,9 +33,9 @@ contract MasterChef is Ownable {
         uint128 rewardsPerSecond;
     }
 
-    address public poolConfigurator;
+    address public immutable poolConfigurator;
 
-    IMultiFeeDistribution public rewardMinter;
+    IMultiFeeDistribution public immutable rewardMinter;
     uint256 public rewardsPerSecond;
     uint256 public immutable maxMintableTokens;
     uint256 public mintedTokens;
@@ -102,7 +102,7 @@ contract MasterChef is Ownable {
             );
         }
         maxMintableTokens = _maxMintable;
-        startTime = _startTime;
+        startTime = _startTime > block.timestamp ? _startTime : block.timestamp;
     }
 
     // Add a new lp to the pool. Can only be called by the poolConfigurator.
@@ -244,14 +244,14 @@ contract MasterChef is Ownable {
                 userBaseClaimable[msg.sender] = userBaseClaimable[msg.sender].add(pending);
             }
         }
+        userAmount = userAmount.add(_amount);
+        user.amount = userAmount;
+        user.rewardDebt = userAmount.mul(accRewardPerShare).div(1e12);
         IERC20(_token).safeTransferFrom(
             address(msg.sender),
             address(this),
             _amount
         );
-        userAmount = userAmount.add(_amount);
-        user.amount = userAmount;
-        user.rewardDebt = userAmount.mul(accRewardPerShare).div(1e12);
         if (pool.onwardIncentives != IOnwardIncentivesController(0)) {
             uint256 lpSupply = IERC20(_token).balanceOf(address(this));
             pool.onwardIncentives.handleAction(_token, msg.sender, userAmount, lpSupply);
@@ -290,10 +290,10 @@ contract MasterChef is Ownable {
         PoolInfo storage pool = poolInfo[_token];
         UserInfo storage user = userInfo[_token][msg.sender];
         uint256 amount = user.amount;
-        IERC20(_token).safeTransfer(address(msg.sender), amount);
-        emit EmergencyWithdraw(_token, msg.sender, amount);
         user.amount = 0;
         user.rewardDebt = 0;
+        IERC20(_token).safeTransfer(address(msg.sender), amount);
+        emit EmergencyWithdraw(_token, msg.sender, amount);
         if (pool.onwardIncentives != IOnwardIncentivesController(0)) {
             uint256 lpSupply = IERC20(_token).balanceOf(address(this));
             try pool.onwardIncentives.handleAction(_token, msg.sender, 0, lpSupply) {} catch {}

@@ -34,9 +34,9 @@ contract ChefIncentivesController is Ownable {
         uint128 rewardsPerSecond;
     }
 
-    address public poolConfigurator;
+    address public immutable poolConfigurator;
 
-    IMultiFeeDistribution public rewardMinter;
+    IMultiFeeDistribution public immutable rewardMinter;
     uint256 public rewardsPerSecond;
     uint256 public immutable maxMintableTokens;
     uint256 public mintedTokens;
@@ -92,7 +92,7 @@ contract ChefIncentivesController is Ownable {
             );
         }
         maxMintableTokens = _maxMintable;
-        startTime = _startTime;
+        startTime = _startTime > block.timestamp ? _startTime : block.timestamp;
     }
 
     // Add a new lp to the pool. Can only be called by the poolConfigurator.
